@@ -159,6 +159,104 @@
       font-size: 11px;
       color: #9ca3af;
     }
+    .price-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      color: #fff;
+      padding: 24px 32px;
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.5);
+      z-index: 20;
+      display: none;
+      text-align: center;
+      border: 2px solid #2563eb;
+      min-width: 300px;
+      animation: priceSlideIn 0.3s ease-out;
+    }
+    .price-display.show {
+      display: block;
+    }
+    .price-title {
+      font-size: 16px;
+      color: #d1d5db;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+    .price-value {
+      font-size: 48px;
+      font-weight: 700;
+      color: #10b981;
+      margin: 12px 0;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    .price-details {
+      font-size: 14px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .price-address {
+      font-size: 13px;
+      color: #e5e7eb;
+      margin-bottom: 20px;
+      padding: 8px 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border-radius: 8px;
+      border-left: 3px solid #2563eb;
+    }
+    .price-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+    .btn-price {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .btn-price.primary {
+      background: #2563eb;
+      color: white;
+    }
+    .btn-price.primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-price.secondary {
+      background: #374151;
+      color: #d1d5db;
+    }
+    .btn-price.secondary:hover {
+      background: #4b5563;
+    }
+    @keyframes priceSlideIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+      }
+    }
+    .price-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 19;
+      display: none;
+    }
+    .price-overlay.show {
+      display: block;
+    }
     .legend {
       position:absolute; bottom:60px; left:12px; background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; z-index:10; font-size: 13px;
       box-shadow: 0 6px 16px rgba(0,0,0,.25);
@@ -226,6 +324,20 @@
 
   <div id="map"></div>
   <div id="notice" class="notice"></div>
+  
+  <!-- Display de Preço Proeminente -->
+  <div id="price-overlay" class="price-overlay"></div>
+  <div id="price-display" class="price-display">
+    <div class="price-title">Valor da Entrega</div>
+    <div class="price-value" id="display-price">R$ 0,00</div>
+    <div class="price-details" id="display-details">Zona • Distância</div>
+    <div class="price-address" id="display-address">Endereço selecionado</div>
+    <div class="price-actions">
+      <button class="btn-price primary" id="btn-confirm-price">Confirmar</button>
+      <button class="btn-price secondary" id="btn-close-price">Fechar</button>
+    </div>
+  </div>
+  
   <div id="geocoder-container" class="geocoder-container">
     <div class="search-box">
       <input type="text" id="search-input" class="search-input" placeholder="Pesquisar endereço na área demarcada...">
@@ -446,16 +558,13 @@
       // Calcula preço se há sistema de precificação ativo
       const pricing = calculatePrice(lng, lat);
       
-      const poly = getCurrentZonePolygon();
-      if (poly) {
-        if (pricing.price > 0) {
-          showNotice(`Endereço selecionado! Zona ${pricing.zone} - Distância: ${pricing.distance}km - Preço: R$ ${pricing.price.toFixed(2)}`, 4000);
-        } else {
-          showNotice('Endereço selecionado dentro da zona!', 2000);
-        }
+      // Mostra display de preço proeminente se há precificação
+      if (pricing.price > 0) {
+        showPriceDisplay(pricing, name);
       } else {
-        if (pricing.price > 0) {
-          showNotice(`Endereço selecionado! Zona ${pricing.zone} - Distância: ${pricing.distance}km - Preço: R$ ${pricing.price.toFixed(2)}`, 4000);
+        const poly = getCurrentZonePolygon();
+        if (poly) {
+          showNotice('Endereço selecionado dentro da zona!', 2000);
         } else {
           showNotice('Endereço selecionado!', 2000);
         }
@@ -624,6 +733,50 @@
       // Se estiver além de 7km
       return { zone: 8, price: 0, distance: distance.toFixed(2) };
     }
+
+    // ==== DISPLAY DE PREÇO PROEMINENTE ====
+    function showPriceDisplay(pricing, address) {
+      // Preenche os dados
+      document.getElementById('display-price').textContent = `R$ ${pricing.price.toFixed(2)}`;
+      document.getElementById('display-details').textContent = `Zona ${pricing.zone} • ${pricing.distance} km do centro`;
+      document.getElementById('display-address').textContent = address;
+      
+      // Mostra overlay e display
+      document.getElementById('price-overlay').classList.add('show');
+      document.getElementById('price-display').classList.add('show');
+      
+      // Auto-focus no botão confirmar
+      setTimeout(() => {
+        document.getElementById('btn-confirm-price').focus();
+      }, 300);
+    }
+
+    function hidePriceDisplay() {
+      document.getElementById('price-overlay').classList.remove('show');
+      document.getElementById('price-display').classList.remove('show');
+    }
+
+    // Eventos do display de preço
+    document.getElementById('btn-confirm-price').addEventListener('click', () => {
+      hidePriceDisplay();
+      showNotice('Preço confirmado! Entrega autorizada.', 3000);
+    });
+
+    document.getElementById('btn-close-price').addEventListener('click', () => {
+      hidePriceDisplay();
+    });
+
+    // Fechar ao clicar no overlay
+    document.getElementById('price-overlay').addEventListener('click', () => {
+      hidePriceDisplay();
+    });
+
+    // Fechar com ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        hidePriceDisplay();
+      }
+    });
 
     // Eventos do input de busca
     searchInput.addEventListener('input', (e) => {
