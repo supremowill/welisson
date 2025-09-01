@@ -189,16 +189,21 @@
       try {
         // Constrói a URL da API do Mapbox Geocoding
         const poly = getCurrentZonePolygon();
+        console.log('Zona atual na busca:', poly); // Debug
+        
         let url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${mapboxgl.accessToken}&country=br&language=pt&limit=10`;
         
         // Se há uma zona demarcada, aplica bbox
         if (poly) {
           const bbox = turf.bbox(poly);
+          console.log('Bbox calculado:', bbox); // Debug
           url += `&bbox=${bbox.join(',')}`;
         }
 
+        console.log('URL de busca:', url); // Debug
         const response = await fetch(url);
         const data = await response.json();
+        console.log('Resultados da API:', data); // Debug
         
         if (data.features && data.features.length > 0) {
           // Filtra resultados que estão dentro da zona (se existir)
@@ -207,10 +212,13 @@
             filteredResults = data.features.filter(feature => {
               if (!feature.center) return false;
               const point = turf.point(feature.center);
-              return turf.booleanPointInPolygon(point, poly);
+              const isInside = turf.booleanPointInPolygon(point, poly);
+              console.log(`Endereço ${feature.place_name} está dentro da zona: ${isInside}`); // Debug
+              return isInside;
             });
           }
           
+          console.log('Resultados filtrados:', filteredResults); // Debug
           displaySearchResults(filteredResults);
         } else {
           displayNoResults();
@@ -334,6 +342,22 @@
       showNotice._t = setTimeout(() => notice.style.display = 'none', ms);
     }
 
+    // ==== ZONA ATUAL ====
+    function getCurrentZonePolygon() {
+      const fc = Draw.getAll();
+      if (!fc || !fc.features || fc.features.length === 0) return null;
+      // só considera o primeiro polígono
+      const poly = fc.features.find(f => f.geometry && f.geometry.type === 'Polygon');
+      return poly || null;
+    }
+
+    function clearMarker() {
+      if (resultMarker) {
+        resultMarker.remove();
+        resultMarker = null;
+      }
+    }
+
     // ==== CARREGAR ZONA DE ARQUIVO ====
     function loadZoneFromFile(file) {
       const reader = new FileReader();
@@ -360,8 +384,12 @@
               const bbox = turf.bbox(polygons[0]);
               map.fitBounds(bbox, { padding: 50 });
               
-              updateGeocoderBBoxFromZone();
-              showNotice(`Zona carregada com sucesso! ${polygons.length > 1 ? '(Apenas a primeira zona foi carregada)' : ''}`, 3000);
+              // Força a atualização da função de busca
+              setTimeout(() => {
+                updateGeocoderBBoxFromZone();
+              }, 500);
+              
+              showNotice(`Zona carregada com sucesso! ${polygons.length > 1 ? '(Apenas a primeira zona foi carregada)' : ''} Agora você pode pesquisar endereços na área.`, 4000);
             } else {
               showNotice('Arquivo não contém polígonos válidos.', 3000);
             }
@@ -374,8 +402,12 @@
             const bbox = turf.bbox(data);
             map.fitBounds(bbox, { padding: 50 });
             
-            updateGeocoderBBoxFromZone();
-            showNotice('Zona carregada com sucesso!', 3000);
+            // Força a atualização da função de busca
+            setTimeout(() => {
+              updateGeocoderBBoxFromZone();
+            }, 500);
+            
+            showNotice('Zona carregada com sucesso! Agora você pode pesquisar endereços na área.', 4000);
           }
           // Se é um polígono direto (geometry only)
           else if (data.type === 'Polygon') {
@@ -390,8 +422,12 @@
             const bbox = turf.bbox(feature);
             map.fitBounds(bbox, { padding: 50 });
             
-            updateGeocoderBBoxFromZone();
-            showNotice('Zona carregada com sucesso!', 3000);
+            // Força a atualização da função de busca
+            setTimeout(() => {
+              updateGeocoderBBoxFromZone();
+            }, 500);
+            
+            showNotice('Zona carregada com sucesso! Agora você pode pesquisar endereços na área.', 4000);
           } else {
             showNotice('Formato de arquivo não suportado. Use um arquivo GeoJSON com polígonos.', 4000);
           }
@@ -409,56 +445,13 @@
       reader.readAsText(file);
     }
 
-    // Função para carregar zona automaticamente se existir arquivo "zona.geojson"
-    async function loadDefaultZone() {
-      try {
-        // Tenta carregar arquivo zona.geojson da mesma pasta
-        const response = await fetch('./zona.geojson');
-        if (response.ok) {
-          const data = await response.json();
-          
-          // Limpa zonas existentes
-          Draw.deleteAll();
-          clearMarker();
-          
-          // Processa o arquivo da mesma forma que o upload manual
-          if (data.type === 'FeatureCollection' && data.features) {
-            const polygons = data.features.filter(f => 
-              f.geometry && f.geometry.type === 'Polygon'
-            );
-            
-            if (polygons.length > 0) {
-              Draw.add(polygons[0]);
-              const bbox = turf.bbox(polygons[0]);
-              map.fitBounds(bbox, { padding: 50 });
-              updateGeocoderBBoxFromZone();
-              showNotice('Zona padrão carregada automaticamente!', 3000);
-            }
-          } else if (data.type === 'Feature' && data.geometry && data.geometry.type === 'Polygon') {
-            Draw.add(data);
-            const bbox = turf.bbox(data);
-            map.fitBounds(bbox, { padding: 50 });
-            updateGeocoderBBoxFromZone();
-            showNotice('Zona padrão carregada automaticamente!', 3000);
-          } else if (data.type === 'Polygon') {
-            const feature = { type: 'Feature', geometry: data, properties: {} };
-            Draw.add(feature);
-            const bbox = turf.bbox(feature);
-            map.fitBounds(bbox, { padding: 50 });
-            updateGeocoderBBoxFromZone();
-            showNotice('Zona padrão carregada automaticamente!', 3000);
-          }
-        }
-      } catch (error) {
-        // Arquivo zona.geojson não existe ou erro de acesso - isso é normal
-        console.log('Arquivo zona.geojson não encontrado (normal)');
-      }
-    }
-
     function updateGeocoderBBoxFromZone() {
       const poly = getCurrentZonePolygon();
       if (poly) {
+        console.log('Zona detectada para busca:', poly); // Debug
         showNotice('Zona definida. Digite no campo de busca para encontrar endereços na área.', 3000);
+      } else {
+        console.log('Nenhuma zona detectada'); // Debug
       }
     }
 
@@ -471,8 +464,7 @@
 
     // ==== Eventos do Draw ====
     map.on('load', () => {
-      // Mapa carregado - tenta carregar zona padrão
-      loadDefaultZone();
+      // Mapa carregado
     });
 
     map.on('draw.create', () => {
