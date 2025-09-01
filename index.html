@@ -86,6 +86,79 @@
       background:#2563eb; color:#fff; border:none; padding:6px 10px; border-radius:8px; cursor:pointer; font-weight:600;
     }
     .btn.secondary { background:#374151; }
+    .pricing-panel {
+      position: absolute;
+      top: 70px;
+      left: 12px;
+      width: 280px;
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 10px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.25);
+      z-index: 10;
+      display: none;
+    }
+    .pricing-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #374151;
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .pricing-content {
+      padding: 12px 16px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .pricing-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .pricing-label {
+      flex: 1;
+      color: #d1d5db;
+    }
+    .pricing-input {
+      width: 80px;
+      padding: 4px 8px;
+      border: 1px solid #374151;
+      border-radius: 6px;
+      background: #1f2937;
+      color: #e5e7eb;
+      font-size: 12px;
+      text-align: right;
+    }
+    .pricing-input:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+    .pricing-actions {
+      padding: 12px 16px;
+      border-top: 1px solid #374151;
+      display: flex;
+      gap: 8px;
+    }
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-success { background: #059669; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .pricing-info {
+      margin-top: 8px;
+      padding: 8px;
+      background: #1f2937;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
     .legend {
       position:absolute; bottom:60px; left:12px; background:#111827; color:#e5e7eb; padding:10px 12px; border-radius:10px; z-index:10; font-size: 13px;
       box-shadow: 0 6px 16px rgba(0,0,0,.25);
@@ -102,7 +175,53 @@
     <button id="btnClear" class="btn secondary" title="Limpar zona">Limpar zona</button>
     <button id="btnExport" class="btn secondary" title="Exportar GeoJSON da zona">Exportar GeoJSON</button>
     <button id="btnImport" class="btn secondary" title="Carregar zona de arquivo">Carregar zona</button>
+    <button id="btnPricing" class="btn secondary" title="Configurar precificação">Precificação</button>
     <input type="file" id="fileInput" accept=".geojson,.json" style="display: none;">
+  </div>
+
+  <!-- Painel de Precificação -->
+  <div id="pricing-panel" class="pricing-panel">
+    <div class="pricing-header">
+      Configuração de Preços por Distância
+    </div>
+    <div class="pricing-content">
+      <div class="pricing-row">
+        <span class="pricing-label">0 - 1 km:</span>
+        <input type="number" class="pricing-input" id="price-1" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">1 - 2 km:</span>
+        <input type="number" class="pricing-input" id="price-2" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">2 - 3 km:</span>
+        <input type="number" class="pricing-input" id="price-3" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">3 - 4 km:</span>
+        <input type="number" class="pricing-input" id="price-4" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">4 - 5 km:</span>
+        <input type="number" class="pricing-input" id="price-5" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">5 - 6 km:</span>
+        <input type="number" class="pricing-input" id="price-6" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-row">
+        <span class="pricing-label">6 - 7 km:</span>
+        <input type="number" class="pricing-input" id="price-7" placeholder="0.00" step="0.01" min="0">
+      </div>
+      <div class="pricing-info">
+        💡 Clique no mapa para definir o ponto central de precificação. Os círculos mostrarão as zonas de preço.
+      </div>
+    </div>
+    <div class="pricing-actions">
+      <button id="btnShowZones" class="btn-small btn-primary">Mostrar Zonas</button>
+      <button id="btnHideZones" class="btn-small btn-danger">Ocultar</button>
+      <button id="btnSavePricing" class="btn-small btn-success">Salvar</button>
+    </div>
   </div>
 
   <div id="map"></div>
@@ -119,6 +238,7 @@
     <div>• Clique no ícone de <b>polígono</b> para desenhar a zona.</div>
     <div>• Clique nos vértices para <b>editar</b>. Pressione <code>Del</code> para apagar.</div>
     <div>• Use <b>Carregar zona</b> para importar um arquivo GeoJSON.</div>
+    <div>• Use <b>Precificação</b> para configurar preços por distância.</div>
     <div>• A busca só aceita <b>resultados dentro da zona</b>.</div>
   </div>
 
@@ -136,6 +256,31 @@
 
     // Marker p/ resultado
     let resultMarker = null;
+    
+    // ==== SISTEMA DE PRECIFICAÇÃO ====
+    let pricingCenter = null;
+    let pricingZones = [];
+    let pricingVisible = false;
+    
+    const defaultPrices = {
+      1: 10.00,
+      2: 15.00,
+      3: 20.00,
+      4: 25.00,
+      5: 30.00,
+      6: 35.00,
+      7: 40.00
+    };
+    
+    const zoneColors = [
+      '#ef4444', // 1km - vermelho
+      '#f97316', // 2km - laranja
+      '#eab308', // 3km - amarelo
+      '#22c55e', // 4km - verde
+      '#06b6d4', // 5km - ciano
+      '#3b82f6', // 6km - azul
+      '#8b5cf6'  // 7km - roxo
+    ];
 
     // ==== DRAW (zona) ====
     const Draw = new MapboxDraw({
@@ -298,14 +443,186 @@
       searchInput.value = name;
       hideSearchResults();
       
+      // Calcula preço se há sistema de precificação ativo
+      const pricing = calculatePrice(lng, lat);
+      
       const poly = getCurrentZonePolygon();
       if (poly) {
-        showNotice('Endereço selecionado dentro da zona!', 2000);
+        if (pricing.price > 0) {
+          showNotice(`Endereço selecionado! Zona ${pricing.zone} - Distância: ${pricing.distance}km - Preço: R$ ${pricing.price.toFixed(2)}`, 4000);
+        } else {
+          showNotice('Endereço selecionado dentro da zona!', 2000);
+        }
       } else {
-        showNotice('Endereço selecionado!', 2000);
+        if (pricing.price > 0) {
+          showNotice(`Endereço selecionado! Zona ${pricing.zone} - Distância: ${pricing.distance}km - Preço: R$ ${pricing.price.toFixed(2)}`, 4000);
+        } else {
+          showNotice('Endereço selecionado!', 2000);
+        }
       }
       
-      console.log('Endereço selecionado:', { lng, lat, name });
+      console.log('Endereço selecionado:', { lng, lat, name, pricing });
+    }
+
+    // ==== SISTEMA DE PRECIFICAÇÃO - FUNÇÕES ====
+    
+    function initializePricing() {
+      // Carrega preços salvos ou usa padrões
+      const savedPrices = localStorage.getItem('pricingZones');
+      const prices = savedPrices ? JSON.parse(savedPrices) : defaultPrices;
+      
+      for (let i = 1; i <= 7; i++) {
+        document.getElementById(`price-${i}`).value = prices[i] || '';
+      }
+      
+      // Carrega centro salvo
+      const savedCenter = localStorage.getItem('pricingCenter');
+      if (savedCenter) {
+        pricingCenter = JSON.parse(savedCenter);
+      }
+    }
+    
+    function savePricing() {
+      const prices = {};
+      for (let i = 1; i <= 7; i++) {
+        const value = parseFloat(document.getElementById(`price-${i}`).value);
+        if (!isNaN(value) && value > 0) {
+          prices[i] = value;
+        }
+      }
+      
+      localStorage.setItem('pricingZones', JSON.stringify(prices));
+      if (pricingCenter) {
+        localStorage.setItem('pricingCenter', JSON.stringify(pricingCenter));
+      }
+      
+      showNotice('Configuração de preços salva!', 2000);
+    }
+    
+    function createPricingZones(centerLng, centerLat) {
+      clearPricingZones();
+      
+      pricingCenter = [centerLng, centerLat];
+      
+      // Cria círculos para cada zona de preço
+      for (let i = 1; i <= 7; i++) {
+        const radius = i; // raio em km
+        const circle = turf.circle([centerLng, centerLat], radius, {
+          steps: 64,
+          units: 'kilometers'
+        });
+        
+        const price = parseFloat(document.getElementById(`price-${i}`).value) || 0;
+        
+        // Adiciona propriedades ao círculo
+        circle.properties = {
+          zone: i,
+          price: price,
+          radius: radius,
+          color: zoneColors[i-1]
+        };
+        
+        pricingZones.push(circle);
+      }
+      
+      if (pricingVisible) {
+        showPricingZones();
+      }
+    }
+    
+    function showPricingZones() {
+      if (pricingZones.length === 0) {
+        showNotice('Defina um ponto central clicando no mapa primeiro.', 3000);
+        return;
+      }
+      
+      // Remove zonas existentes
+      hidePricingZones();
+      
+      pricingZones.forEach((zone, index) => {
+        const sourceId = `pricing-zone-${zone.properties.zone}`;
+        const layerId = `pricing-layer-${zone.properties.zone}`;
+        
+        // Adiciona source
+        map.addSource(sourceId, {
+          type: 'geojson',
+          data: zone
+        });
+        
+        // Adiciona layer de preenchimento
+        map.addLayer({
+          id: layerId,
+          type: 'fill',
+          source: sourceId,
+          paint: {
+            'fill-color': zone.properties.color,
+            'fill-opacity': 0.1
+          }
+        });
+        
+        // Adiciona layer de borda
+        map.addLayer({
+          id: `${layerId}-stroke`,
+          type: 'line',
+          source: sourceId,
+          paint: {
+            'line-color': zone.properties.color,
+            'line-width': 2,
+            'line-opacity': 0.8
+          }
+        });
+      });
+      
+      // Adiciona marcador no centro
+      if (pricingCenter) {
+        if (resultMarker) resultMarker.remove();
+        resultMarker = new mapboxgl.Marker({ color: '#dc2626' })
+          .setLngLat(pricingCenter)
+          .addTo(map);
+      }
+      
+      pricingVisible = true;
+      showNotice('Zonas de precificação exibidas!', 2000);
+    }
+    
+    function hidePricingZones() {
+      pricingZones.forEach((zone) => {
+        const layerId = `pricing-layer-${zone.properties.zone}`;
+        const strokeId = `${layerId}-stroke`;
+        const sourceId = `pricing-zone-${zone.properties.zone}`;
+        
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getLayer(strokeId)) map.removeLayer(strokeId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+      });
+      
+      pricingVisible = false;
+    }
+    
+    function clearPricingZones() {
+      hidePricingZones();
+      pricingZones = [];
+    }
+    
+    function calculatePrice(lng, lat) {
+      if (!pricingCenter || pricingZones.length === 0) {
+        return { zone: 0, price: 0, distance: 0 };
+      }
+      
+      const point = turf.point([lng, lat]);
+      const center = turf.point(pricingCenter);
+      const distance = turf.distance(center, point, { units: 'kilometers' });
+      
+      // Encontra a zona correspondente
+      for (let i = 1; i <= 7; i++) {
+        if (distance <= i) {
+          const price = parseFloat(document.getElementById(`price-${i}`).value) || 0;
+          return { zone: i, price: price, distance: distance.toFixed(2) };
+        }
+      }
+      
+      // Se estiver além de 7km
+      return { zone: 8, price: 0, distance: distance.toFixed(2) };
     }
 
     // Eventos do input de busca
@@ -464,7 +781,8 @@
 
     // ==== Eventos do Draw ====
     map.on('load', () => {
-      // Mapa carregado
+      // Mapa carregado - inicializa precificação
+      initializePricing();
     });
 
     map.on('draw.create', () => {
@@ -524,8 +842,36 @@
       }
     });
 
+    // ==== Eventos de Precificação ====
+    document.getElementById('btnPricing').addEventListener('click', () => {
+      const panel = document.getElementById('pricing-panel');
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    });
+
+    document.getElementById('btnShowZones').addEventListener('click', () => {
+      showPricingZones();
+    });
+
+    document.getElementById('btnHideZones').addEventListener('click', () => {
+      hidePricingZones();
+    });
+
+    document.getElementById('btnSavePricing').addEventListener('click', () => {
+      savePricing();
+    });
+
     // ==== Qualidade de vida: clique fora para esconder aviso ====
-    map.on('click', () => { notice.style.display = 'none'; });
+    map.on('click', (e) => { 
+      notice.style.display = 'none';
+      
+      // Se o painel de precificação estiver aberto, permite definir ponto central
+      const pricingPanel = document.getElementById('pricing-panel');
+      if (pricingPanel.style.display === 'block') {
+        const { lng, lat } = e.lngLat;
+        createPricingZones(lng, lat);
+        showNotice(`Ponto central definido: ${lat.toFixed(4)}, ${lng.toFixed(4)}`, 2500);
+      }
+    });
 
   </script>
 </body>
